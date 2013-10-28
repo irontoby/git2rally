@@ -1,0 +1,354 @@
+git2rally
+--------
+
+This is the README file for the Rally Connector for Git.
+
+The source distribution comprises code that skims the Git system for 
+recent commits and extracts information from the commit messages and posts 
+Changeset/Change information to a Rally SCMRepository according to specifications 
+in a configuration file.
+
+This software is written in Ruby and has been tested using 
+Ruby 1.9.2-p290, but should also work with Ruby 1.9.3-p194. 
+If this software is for use on a Linux/Unix/MacOSX system then it must
+be installed subsequent to installing the httpclient and rally_api gems. 
+(See details further down in this file).  
+
+If this software is for use on a Windows platform and you use the 
+installer package, you will not need to have Ruby installed on your
+platform, it is in included in the installer package.
+
+Tactical Preparation
+--------------------
+
+   o - Verify that your target WorkspaceConfiguration has BuildandChangsetEnabled set
+      
+       Your Rally Workspace administrator needs to enable this for your target Workspace.
+       If it is not enabled, the connector will work, but you won't be able to see 
+       any of the Changeset/Change information that is associated with your Rally
+       work items (Story, Defect, Task, etc).
+
+   o - Installer vs. operator filesystem permissions
+
+        As this connector is intended to run on an ongoing basis initiated by
+        either cron or Windows Task Scheduler (WTS), it is important to consider the 
+        identity of the user who installs the connector versus the identity of 
+        the user when run via cron/WTS with regard to the permissioning / ACL
+        of the directories and files in the connector installation.
+        The runner of the connector must be able to read all files and must be
+        able to write in the configs and logs subdirectories.
+
+   o - Connector on Git platform vs use of ssh
+
+        The primary use case is for this connector to be run on the platform that
+        the Git software and repository reside on.
+        While it is possible to run this connector on a platform that is not the
+        Git platform, that use case assumes the use of ssh and the proper
+        setup of public / private key information.  Setting up ssh and key files is
+        beyond the scope of this document; consult the interwebs for any one of many
+        fine documents regarding ssh and PKI.
+        If you intend to run the connector on a Windows platform, and the Git
+        repository will be located on a different platform, you'll need to make sure
+        that the 'ssh.exe' command is installed on your Windows platform running
+        the connector and it's location in the filesystem is an element in your 
+        %PATH%.
+
+    o - Consider how much Git history you want to have reflected in Rally 
+
+        It is possible to operate the connector to "catch-up" with the complete
+        history of commits in Git.  You should assemble a pro/con list of
+        considerations, reasons and benefits to help you arrive at a strategy that
+        works for your organization with respect to whether or not you need a 
+        complete commit history reflected in Rally or just reflected from some  
+        particular point in time.
+
+
+Distribution contents
+---------------------
+   README
+   LICENSE
+   git2rally.rb   (*nix only)
+   git2rally.exe  (Windows only)
+   git2rally.bat  (Windows only)
+   vcseif-<version>.gem  (*nix only)
+
+   configs
+       sample.yml
+       user_map.txt
+
+   logs   (a directory/folder to hold high-level log and log per config)
+
+   lib
+       git_connection.rb
+
+   plugin
+       passthru.rb
+       domainaug.rb
+       ralkup.rb
+       filemap.rb
+       emailaddr.rb
+       chainlkup.rb
+       viscount.rb
+
+   extension
+       statex.rb     (exemplar of how to extract artifact and action information)
+
+   User-Mapping-Strategies
+
+   WinTail.exe (Windows only)
+
+
+Prerequisites
+-------------
+    * this section relevant for *nix installation only
+
+    httpclient  version 2.3.0.1          (available at http://www.rubygems.org/gems/httpclient)
+    rally_api   version 0.9.22 or better  (available at http://www.rubygems.org/gems/rally_api)
+
+    Install the httpclient and rally_api gem before installing the connector, using the gem install command.
+    Additional information about Ruby gems and their installation can be obtained from
+    http://www.ruby-lang.org/en/libraries and other websites related to the Ruby language and ecosystem.
+    
+
+Installation
+------------
+    
+    *nix platform
+    -------------
+    Unpack the distribution package into a directory you want to have
+    as the operational home for this software.
+
+    Tip: The distribution unpacks into a git2rally-*-<version>-<build_ident> directory.  
+         Create a symlink with a shorter name to point to that either under the same 
+         directory root or from somewhere else (like /usr/local or /opt/local).
+         For example: 
+           $ ln -s /opt/sw/git2rally-gemconn-0.8.9-cib48 /opt/local/gitr
+
+    Install the vcseif gem:
+     # using the above example of having created a symlink to the installation root...
+     $ cd /opt/local/gitr   
+     $ gem install vcseif-<version>.gem --no-ri --no-rdoc
+
+     Windows platform
+     ----------------
+     If you downloaded the zip file package (GitConnectorforRally-<version>.zip), 
+     unzip it to a staging folder.  This unzips into a single file,
+     GitConnectorforRally-<version>.exe which is the installer executable.
+
+     Run the installer executable (GitConnectorforRally-<version>.exe).
+     You'll need to respond to dialogs asking you to accept the license terms
+     and to select the location where you want to have the connector installed.
+     Choose a location that makes sense for your environment and conventions.
+
+     The installation on Windows also includes a file named WinTail.exe.  This is
+     a third-party tool (with a free for general use license) that can be used 
+     to follow ("tail") a log file as the the connector executes.  You can certainly
+     use any other tool to achieve that same result, we package WinTail.exe as a
+     convenience for you to use as you see fit.
+
+
+Configuration
+-------------
+
+    Copy the sample.yml file in configs to a new name, for example, repo_one.yaml. 
+    Edit the copied file and adjust some of the sample values for servers, credentials
+    workspaces, repository names and paths to values appropriate for your environment.
+    The file is in YAML format.  The YAML format uses indentation to represent structure
+    and colon character (:) and dash character (-) to denote name/value separation 
+    and list elements.  So, you'll need to be aware of preserving those syntactical 
+    elements in your edited file.
+
+    Within the Rally section of your YAML configuration file, there is an entry where
+    you can name the SCMRepository in the Rally system to which Changeset/Change items
+    will be associated.   This SCMRepository is a named container which need not exist
+    before running the connector; if it doesn't exist, the connector will create
+    the SCMRepository in the Rally user's target workspace.  
+
+    Assess how user names are alike or differ in your Git system and in your 
+    Rally subscription.  If the user names are universally identical in both systems,
+    then you can either comment out all Author subitems underneath the Transforms section
+    or you can set the value for the Author field in the Transforms section to 'Passthru'.
+    If on the other hand there is a deterministic mapping that can transform a Git
+    user value to the corresponding correct Rally username value, you'll need to 
+    adjust the transformation value for Author to the appropriate classname.
+    Consult the User-Mapping-Strategies text document to determine which technique
+    fits your particular situation.
+
+    There is an optional Lookback configuration item that can appear on either or both of
+    the Rally and Git sections of the configuration file.  The value for this parameter
+    is expressed in terms of minutes (default or with the use of the 'm' character) or 
+    hours using a 'h' character or days by using a 'd' character.
+    You can also fully spell the recogized units as "minutes", "hours" or "days".
+    Examples:
+        Lookback: 90
+        Lookback: 120 m
+        Lookback: 8 h
+        Lookback: 10 days
+
+    If you do not explicitly provide a Lookback value, the connector uses a defalt value of 1 hour.
+    Rally recommends that if you specify a value for Lookback in either section that you also specify
+    a Lookback in the counterpart section with the same value.  If the Lookback values 
+    are not identical, there is the possibility under some circumstances that a changeset from 
+    Git would not be
+    reflected in Rally due to the nature of distributed version control systems 
+    recording the original commit time and not the time the commits are pushed to a master repository 
+    and window of time consideration being too short for the connector to pick up such commits.
+
+
+Example Configuration
+---------------------
+
+---
+
+VCSConnector:
+
+Rally:
+    Server         : us1.rallydev.com
+    Protocol       : https
+    Username       : jojo@muchly.com
+    Password       : 22333four
+    Workspace      : VanillaBean
+    SCMRepository  : Balloon
+    #Proxy         : some_proxy.yoursite.com:8090  # or an IP address:port
+    #ProxyUser     : outbound
+    #ProxyPassword : bvc-357%GNQ
+    Lookback : 90  # in minutes by default, use m/h/d suffix for minutes/hours/days
+    UpdateArtifactState : False
+    StateExtractorClass : BasicActionsAndArtifactsExtractor(message)
+    Debug : False
+
+Git:
+    RepositoryBase: /var/www/foo/bar
+    Uri      : http://yourserver.com:8090/gitifc
+    Lookback : 90 m
+    MaxItems : 100 
+    Debug    : False
+
+Services:
+    Preview  : False
+    LogLevel : Debug
+
+Transform:
+    Author: Passthru
+
+...
+
+Note that the Proxy* items are commented out by using a '#' in front of the item.  
+Within a YAML file, a line starting with a '#' character is ignored and any text
+after a ' #' sequence is ignored (including the ' #' sequence).
+
+
+Operation
+---------
+
+    Within the 'Services' section of your config file ("repo_one.yaml" for example), is
+    an entry for 'Preview' that is set to 'False'.  You may want to set this value to 'True'
+    in the initial setup phase to see that the connector can successfully connect to Rally
+    with the credentials and information you've provided, as well as proving out the
+    use of the 'git' command.  Your PATH environment variable must contain a filesystem 
+    path where the 'git' command can be found.  See Linux / Unix / MacOSX  / Windows
+    documentation on how to set environment variables for use within a *nix cron job
+    (or Windows Task Scheduler entry).
+    Once you've determined that a connector run in Preview mode operates as expected,
+    you can set the Preview value in your config to a False value.
+
+    On an ongoing basis, you can use cron / Windows Task Scheduler 
+    (or any other job/task scheduling software) to run the connector periodically.
+    Initially, Rally recommends the connector to be run every 15 minutes during normal
+    business hours and less frequently during non-business hours.
+
+    You can have numerous config files in the configs subdir and specify them all for 
+    invocation either by name or by globbing (wild-card syntax).
+
+    Example:
+        ruby git2rally.rb apricot banana cherry dogwood
+       
+        or on Windows:
+
+        git2rally.exe apricot banana cherry dogwoood
+
+    where the files apricot.yml, banana.yml, cherry.yml and dogwood.yml exist in the
+    configs subdirectory.  The connector only looks for config files in the configs 
+    subdirectory under the installation base directory..
+
+    Whenever the connector is run, an entry is made in the logs/git2rally.log file to note
+    the invocation.  For each config named at invocation, there will be an entry in that file
+    noting the return code from running that config.  When the connector run has finished with
+    all configs, an entry is written to note the completion of the connector run.
+
+    Additionally, there will be a file written in the logs subdirectory for each config named
+    that will have much more detail about the activity that occurs during the run.
+    You can adjust the verbosity written to these log files by modifying the LogLevel value
+    in the config file.  Normally, the LogLevel would be set to 'Info'.  Should you encounter 
+    situations where the connector does not complete normally, you can adjust the LogLevel to 
+    'Debug' and run the connector to begin the troubleshooting process.  These log files 
+    can be sent to Rally Support to expedite the investigation of a case.
+
+    The connector will write a file in the base installation directory corresponding to the
+    config name with the date of the last commit processed.  The file is named 
+    <i>config</i>_time.file and simply has a time entry in the form 'YYYY-mm-dd HH:MM:SS Z'
+    (for Zulu time).
+    When first run, there won't be a <i>time file</i> for the config and the connector defaults
+    to looking for commits that occurred after 2010-01-01 00:00:00 Z.  You can override that
+    behavior by creating and editing a <i>time file</i> for the config you are about to process.
+    By providing an entry in the format mentioned above, you can control that point from which 
+    commits are processed.
+    
+
+Extensions
+----------
+
+    Within the 'extension' sub-folder of the installation, there is an exemplar Ruby class
+    in the file named 'statex.rb'.  The class definition contained in that file is named
+    'BasicActionsAndArtifactsExtractor'.  This example class demonstrates the basic technique
+    of examining a commit message and extracting Rally artifact identifiers and state transition
+    target values.  Using this class when the config file item 'UpdateArtifactState' value is set
+    to True results in the transition of the State (or ScheduleState in the case of UserStory) of
+    the identified artifact to the state value mentioned in the commit message.  
+
+    For example, if there is a Rally Defect (identified as DE1987) mentioned in the commit message
+    with a new valid state value either immediately preceding or following the artifact identifier,
+    then the connector will change the State of the identified artifact in Rally to that state.
+
+    Example:  git commit my_file.java -m "Fixed DE1987 by changing preamble paragraph 3"
+
+    If Rally Defect DE1987 had been in the 'Open' state prior to the commit and run of the connector,
+    then subsequent to the operation of the connector processing this particular changeset, the
+    state of Rally Defect DE1987 would appear as 'Fixed'.
+  
+    The extension folder allows you to provide your own message processing to extract Rally artifact
+    identifiers and state changes if the example provided does not fit your conventions. 
+    Your extension must be a class written in Ruby and must provide an instance method called 'service'
+    which takes the commit message as an argument and must return a Ruby Hash instance with entries
+    keyed by a State name (ie., 'Fixed', 'Completed', etc.) or nil with a Ruby Array as the associated
+    value populated by Rally artifact identifiers (FormattedID). 
+
+Updates
+-------
+     
+     Rally has a website on which new versions of the Git to Rally Connector are made 
+     available:
+        https://people.rallydev.com/connector/HG-7532-4884-1341-9704       
+
+     **** If you re-install or update the connector, make sure to store off your config
+          files so that you don't have to redo your configuration work.
+
+Changes
+-------
+
+    1.1.0  Defect fixes.  First GA for TFS to Rally VCS spoke.
+    October 2013
+
+    1.0.2  Config file section header lines can now have comments
+    May 2013
+
+    1.0.1  Adjusted time file entry to account for DST correctly
+    April 2013
+
+    1.0.0  Pre-GA
+    March 2013
+
+Feedback
+--------
+ 
+   Contact us with questions / issues / suggestions at support@rallydev.com

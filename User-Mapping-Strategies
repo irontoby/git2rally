@@ -1,0 +1,102 @@
+
+In Subversion, a committer is identified by a single string value, eg., 'devdanny'.
+
+In Mercurial, a commiter is customarily identified by a two part identifier specified by
+the username entry in the user's $HOME/.hgrc file (or repository .hgrc/hg file).
+The usual convention is that the two parts are the user's name and their email address.
+
+For the purposes of reflecting VCS revisions/changesets in Rally, there is not always
+a direct one-to-one mapping between the value of the committer in the VCS and a Rally User.
+A Rally User is uniquely identified by the Rally UserName field value.  The VCS connector
+has several methods available to enable the mapping of a VCS committer value to a 
+Rally User.  In the event that no mapping is found for a VCS committer identifier
+a Changeset will still be created in Rally, but there will be no value for the Author 
+attribute in the Changeset.
+
+The following is a table consisting of the mapping techniques that take a
+Version Control System (VCS) committer identifier and attempt to map it to the 
+corresponding Rally UserName value.
+
+Committer characteristic                         |   Candidate plugin class             |  plugin file
+----------------------------------------------      --------------------------------       -------------
+
+committer value is Rally UserName                   Passthru                               passthru.rb
+
+    ralph@vons.com --> ralph@vons.com
+
+
+committer value is an email address                 EmailAddressAsRallyUser                emailaddr.rb
+ that is a valid Rally UserName
+      (Mercurial oriented)
+
+ Fred Flintz "freddy@stones.com" --> freddy@stones.com
+
+      
+committer value augmented with a                    UserNameDomainAugmentLookup            domainaug.rb
+ specific domain is a valid
+ Rally UserName                         
+      (Subversion oriented)
+
+  snelason ->  snelason@motorz.com                  UserNameDomanAugmentLookup(motorz.com)
+
+
+little or no discernable mapping                    FileBasedUserMapLookup                  filemap.rb
+ of identifier to corresponding
+ Rally UserName                        
+
+  jemator -> jennymason@frittles.org                FileBasedUserMapLookup(map_file,":")
+
+
+VCS user name can be deconstructed                  RallyLookup                            ralkup.rb
+ to specific components that have
+ counterparts as fields in the Rally 
+ User record (FirstName,LastName).
+ Lookup occurs on those Rally fields
+ to identify a specific Rally User.
+      (Mercurial oriented)                         
+
+ Matt Korry "matty@barkdell.com"                   RallyLookup(FirstName,LastName)
+     --> "matthew.korry@barkdell.com"
+  
+
+VCS user name can usually be                       UserLookupChainGang                     chainlkup.rb
+ deconstructed to specific components
+ that have counterparts as fields in the
+ Rally User record (FirstName,LastName),
+ but not always. The non-hits using
+ the RallyLookup technique are listed
+ in a text file with the intended
+ mapping to a Rally UserName.                      UserLookupChainGang(FirstName,LastName,user_map.txt,":")
+    (Mercurial oriented)
+
+   Ferris Bueller "ferrister@odos.com"
+     -->  ferrisb@odometers.com
+
+   Paula Bisping "paulab@southern-cross.com"
+     -->  paulajbi@southernc.com
+
+   where the Rally account for ferrisb@odometers.com
+    has the value of 'Ferris' in the FirstName field
+    and the value of 'Bueller' in the LastName field.
+
+   the account for paulajbi@southerc.com has no entry
+    in either the FirstName or LastName field, but there
+    is an entry in the others_map.txt file with:
+     Paula Bisping : paulajbi@southernc.com
+  
+   the sequence is to attempt a lookup match using the
+   RallyLookup technique using the committer's name field
+   against a lookup list constructed from the concatenation
+   of a Rally account's FirstName and LastName field (with 
+   a space separating the two values). If there is a match
+   of the committer name to a concatenation, then the
+   Author attribute of the Changeset created in Rally is
+   attributed to the Rally User with the matching concatenation.
+   If no such match is found, the lookup list from the file
+   named (in the example above, others_map.txt) is consulted
+   for a potential match with the commmitters name.
+   In the lookup file, the committer name is to the left of
+   a separator characters (commonly a ':' character) and
+   a valid Rally UserName value is on the right hand side.
+
+                                        

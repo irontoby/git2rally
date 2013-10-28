@@ -1,0 +1,44 @@
+VCSConnector:
+
+#
+# The content of the file below should follow YAML specifications
+# Non standard characters should be enclosed with double quotations
+# RepositoryBase is an exception and cannot be enclosed with double quotations
+# Therefore the RepositoryBase cannot contain special characters.
+#
+Rally:
+    Server              : "trial.rallydev.com"        # required
+    Protocol            : https                       # required, https or (http only for On Premise)
+    Username            : "user@company.com"          # required
+    Password            : "BigS3Krates"               # required, is encoded after first use
+    Workspace           : "Target Workspace"          # required, name of Rally Workspace
+    RepositoryName      : "CodeTank"                  # required, name of Rally SCMRepository
+#   Proxy               : "server:port"               # optional
+#   ProxyUser           : "Proxy User"                # optional, use when Proxy is an authenticating proxy
+#   ProxyPassword       : "Proxy Password"            # optional, use when Proxy is an authenticating proxy
+    Lookback            : 90                          # optional (in minutes), defaults to 60 minutes
+    UpdateArtifactState : False                       # False is the default value
+    StateExtractorClass : BasicActionsAndArtifactsExtractor(message)  # only used if above is True
+    Debug               : False                       # defaults to False, to enable, specify a value of True
+
+Git:
+#   Server              : your_vcs_server.company.com # optional, but if set connector runner user must authenticate using PKI
+    RepositoryBase      : /home/git/repos/bigproject # required, filesystem path to git repository
+    Lookback            : 90                          # in minutes, optional (defaults to 120 minutes)
+    MaxItems            : 100                         # required, max items processed in a run
+#   RevURI              : "http://git/giturial/bigproject/rev/{revnumber}"             # optional, if running web access to repo
+#   FileURI             : "http://git/giturial/bigproject/file/{revnumber}/{filepath}" # optional, if running web access
+
+Services:
+    Preview             : True                        # optional; when True, show what would happen
+    LogLevel            : Debug                       # optional; default value is Info
+#   PostBatchExtension  : MetricsPoster               # for future use
+
+Transforms:                                           # Listing a Transform is Required
+    Author              : Passthru                    # Required defaults to Passthru
+#   Author              : Blank
+#   Author              : EmailAddressAsRallyUser
+#   Author              : FileBasedUserNameLookup(user_map.txt, ":")
+#   Author              : RallyUserNameLookup(FirstName, LastName)
+#   Author              : UserNameDomainAugmentLookup(DomainName)
+#   Author              : UserLookupChainGang(FirstName, LastName, user_map.txt, ":")
